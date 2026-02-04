@@ -1,8 +1,8 @@
 ;***********************************************************
-;*	This is the skeleton file for Lab 3 of ECE 375
+;*	This is the skeleton file for Lab 3 of ECE 370
 ;*
-;*	 Author: Enter your name
-;*	   Date: Enter date
+;*	 Author: Graham Brown and Matt Wallin
+;*	   Date: 2/6/2026
 ;*
 ;***********************************************************
 
@@ -31,13 +31,23 @@
 ;***********************************************************
 INIT:							; The initialization routine
 		; Initialize Stack Pointer
+		ldi		mpr, low(RAMEND)
+		out		SPL, mpr		; Load SPL with low byte of RAMEND
+		ldi		mpr, high(RAMEND)
+		out		SPH, mpr		; Load SPH with high byte of RAMEND
 
 		; Initialize LCD Display
+		rcall LCDInit
 
 		; NOTE that there is no RET or RJMP from INIT,
 		; this is because the next instruction executed is the
 		; first instruction of the main program
 
+		; Initialize Port D for input
+		ldi		mpr, $00		; Set Port D Data Direction Register
+		out		DDRD, mpr		; for input
+		ldi		mpr, $FF		; Initialize Port D Data Register
+		out		PORTD, mpr		; so all Port D inputs are Tri-State
 ;***********************************************************
 ;*	Main Program
 ;***********************************************************
@@ -47,6 +57,8 @@ MAIN:							; The Main program
 		; Move strings from Program Memory to Data Memory
 
 		; Display the strings on the LCD Display
+
+		rcall LCDClr
 
 		rjmp	MAIN			; jump back to main and create an infinite
 								; while loop.  Generally, every main program is an
@@ -62,9 +74,9 @@ MAIN:							; The Main program
 ; Desc: Cut and paste this and fill in the info at the
 ;		beginning of your functions
 ;-----------------------------------------------------------
-FUNC:							; Begin a function with a label
+storeStrings:							; Begin a function with a label
 		; Save variables by pushing them to the stack
-
+		LPM mpr, STRING1_BEG
 		; Execute the function here
 
 		; Restore variables by popping them from the stack,
@@ -80,11 +92,16 @@ FUNC:							; Begin a function with a label
 ; An example of storing a string. Note the labels before and
 ; after the .DB directive; these can help to access the data
 ;-----------------------------------------------------------
-STRING_BEG:
-.DB		"My Test String"		; Declaring data in ProgMem
-STRING_END:
+STRING1_BEG:
+.DB		"Matt and Graham "		; Declaring data in ProgMem
+STRING1_END:
+
+STRING2_BEG:
+.DB		"were here!"		; Declaring data in ProgMem
+STRING2_END:
 
 ;***********************************************************
 ;*	Additional Program Includes
 ;***********************************************************
 .include "LCDDriver.asm"		; Include the LCD Driver
+
