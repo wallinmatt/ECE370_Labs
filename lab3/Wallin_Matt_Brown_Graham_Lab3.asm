@@ -58,7 +58,11 @@ MAIN:							; The Main program
 
 		; Display the strings on the LCD Display
 
-		rcall LCDClr
+		rcall LCDBacklightOn
+
+		rcall storeStrings
+
+		rcall LCDWrite
 
 		rjmp	MAIN			; jump back to main and create an infinite
 								; while loop.  Generally, every main program is an
@@ -70,13 +74,24 @@ MAIN:							; The Main program
 ;***********************************************************
 
 ;-----------------------------------------------------------
-; Func: Template function header
+; Func: storeStrings
 ; Desc: Cut and paste this and fill in the info at the
 ;		beginning of your functions
 ;-----------------------------------------------------------
 storeStrings:							; Begin a function with a label
 		; Save variables by pushing them to the stack
-		LPM mpr, STRING1_BEG
+		; Load Z pointer with STRING1_BEG address
+		ldi ZL, low(STRING1_BEG<<1)     ; Load low byte (<<1 for word addressing)
+		ldi ZH, high(STRING1_BEG<<1)    ; Load high byte
+
+		LOOP1:
+			LPM mpr, Z+                      ; Load byte and increment Z
+			ST Y+, mpr                       ; Store to data memory
+			; Compare Z with STRING1_END to know when to stop
+			cpi ZL, low(STRING1_END<<1)
+			brne LOOP1
+			cpi ZH, high(STRING1_END<<1)
+			brne LOOP1
 		; Execute the function here
 
 		; Restore variables by popping them from the stack,
