@@ -48,6 +48,8 @@ INIT:							; The initialization routine
 		out		DDRD, mpr		; for input
 		ldi		mpr, $FF		; Initialize Port D Data Register
 		out		PORTD, mpr		; so all Port D inputs are Tri-State
+
+		rcall LCDClr
 ;***********************************************************
 ;*	Main Program
 ;***********************************************************
@@ -62,7 +64,9 @@ MAIN:							; The Main program
 
 		rcall storeString1
 
-		rcall LCDWrLn1
+		rcall storeString2
+
+		rcall LCDWrite
 
 		rjmp	MAIN			; jump back to main and create an infinite
 								; while loop.  Generally, every main program is an
@@ -74,11 +78,11 @@ MAIN:							; The Main program
 ;***********************************************************
 
 ;-----------------------------------------------------------
-; Func: storeStrings
+; Func: storeString1
 ; Desc: Cut and paste this and fill in the info at the
 ;		beginning of your functions
 ;-----------------------------------------------------------
-storeString`:							; Begin a function with a label
+storeString1:							; Begin a function with a label
 		; Save variables by pushing them to the stack
 		push ZL
 		push ZH
@@ -113,6 +117,48 @@ storeString`:							; Begin a function with a label
 		pop ZH
 		pop ZL
 		ret						; End a function with RET
+
+;-----------------------------------------------------------
+; Func: storeString2
+; Desc: Cut and paste this and fill in the info at the
+;		beginning of your functions
+;-----------------------------------------------------------
+storeString2:							; Begin a function with a label
+		; Save variables by pushing them to the stack
+		push ZL
+		push ZH
+		push YL
+		push YH
+		push mpr
+
+		; Load Z pointer with STRING1_BEG address
+		ldi ZL, low(STRING2_BEG<<1)     ; Load low byte (<<1 for word addressing)
+		ldi ZH, high(STRING2_BEG<<1)    ; Load high byte
+
+		ldi YL, low($0110)          ; Line 1 starts at $0100
+		ldi YH, high($0110)
+
+		LOOP2:
+			LPM mpr, Z+                      ; Load byte and increment Z
+			ST Y+, mpr                       ; Store to data memory
+			cpi ZL, low(STRING2_END<<1) ; while (Z != address after last character)
+			brne LOOP2
+			cpi ZH, high(STRING2_END<<1)
+			brne LOOP2
+			
+
+		; Execute the function here
+
+		; Restore variables by popping them from the stack,
+		; in reverse order
+
+		pop mpr
+		pop YH
+		pop YL
+		pop ZH
+		pop ZL
+		ret						; End a function with RET
+
 
 ;***********************************************************
 ;*	Stored Program Data
