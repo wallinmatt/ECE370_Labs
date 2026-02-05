@@ -60,9 +60,9 @@ MAIN:							; The Main program
 
 		rcall LCDBacklightOn
 
-		rcall storeStrings
+		rcall storeString1
 
-		rcall LCDWrite
+		rcall LCDWrLn1
 
 		rjmp	MAIN			; jump back to main and create an infinite
 								; while loop.  Generally, every main program is an
@@ -78,25 +78,40 @@ MAIN:							; The Main program
 ; Desc: Cut and paste this and fill in the info at the
 ;		beginning of your functions
 ;-----------------------------------------------------------
-storeStrings:							; Begin a function with a label
+storeString`:							; Begin a function with a label
 		; Save variables by pushing them to the stack
+		push ZL
+		push ZH
+		push YL
+		push YH
+		push mpr
+
 		; Load Z pointer with STRING1_BEG address
 		ldi ZL, low(STRING1_BEG<<1)     ; Load low byte (<<1 for word addressing)
 		ldi ZH, high(STRING1_BEG<<1)    ; Load high byte
 
+		ldi YL, low($0100)          ; Line 1 starts at $0100
+		ldi YH, high($0100)
+
 		LOOP1:
 			LPM mpr, Z+                      ; Load byte and increment Z
 			ST Y+, mpr                       ; Store to data memory
-			; Compare Z with STRING1_END to know when to stop
-			cpi ZL, low(STRING1_END<<1)
+			cpi ZL, low(STRING1_END<<1) ; while (Z != address after last character)
 			brne LOOP1
 			cpi ZH, high(STRING1_END<<1)
 			brne LOOP1
+			
+
 		; Execute the function here
 
 		; Restore variables by popping them from the stack,
 		; in reverse order
 
+		pop mpr
+		pop YH
+		pop YL
+		pop ZH
+		pop ZL
 		ret						; End a function with RET
 
 ;***********************************************************
