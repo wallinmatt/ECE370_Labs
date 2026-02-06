@@ -12,6 +12,12 @@
 ;*	Internal Register Definitions and Constants
 ;***********************************************************
 .def	mpr = r16				; Multipurpose register is required for LCD Driver
+.def	temp = r17
+
+.equ	buffTime = 25
+.equ	button4 = 4
+.equ	button5 = 5
+.equ	button7 = 7
 
 ;***********************************************************
 ;*	Start of Code Segment
@@ -50,28 +56,39 @@ INIT:							; The initialization routine
 		out		PORTD, mpr		; so all Port D inputs are Tri-State
 
 		rcall LCDClr
+		rcall LCDBacklightOn
 ;***********************************************************
 ;*	Main Program
 ;***********************************************************
-MAIN:							; The Main program
-		; Main function design is up to you. Below is an example to brainstorm.
+MAIN:
 
 		; Move strings from Program Memory to Data Memory
 
 		; Display the strings on the LCD Display
 
-		rcall LCDBacklightOn
-
+		in		mpr, PIND
+		andi	mpr, (1<<button4|1<<button5|1<<button7)
+		cpi   mpr, ~(1<<button5) & ((1<<button4|1<<button5|1<<button7))
+		brne CHECK_B4
 		rcall storeString1
-
 		rcall storeString2
-
 		rcall LCDWrite
+		rjmp	MAIN
+CHECK_B4:	
+		cpi   mpr, ~(1<<button4) & ((1<<button4|1<<button5|1<<button7))
+		brne CHECK_B7
+		rcall LCDClr
+		rcall LCDWrite
+		rjmp MAIN
+CHECK_B7: 
+		cpi   mpr, ~(1<<button7) & ((1<<button4|1<<button5|1<<button7))
+		brne MAIN
+		rcall storeString1
+		rcall storeString2
+		rcall displayTicker
+		rjmp MAIN
+		
 
-		rjmp	MAIN			; jump back to main and create an infinite
-								; while loop.  Generally, every main program is an
-								; infinite while loop, never let the main program
-								; just run off
 
 ;***********************************************************
 ;*	Functions and Subroutines
@@ -98,8 +115,8 @@ storeString1:							; Begin a function with a label
 		ldi YH, high($0100)
 
 		LOOP1:
-			LPM mpr, Z+                      ; Load byte and increment Z
-			ST Y+, mpr                       ; Store to data memory
+			lpm mpr, Z+                      ; Load byte and increment Z
+			st Y+, mpr                       ; Store to data memory
 			cpi ZL, low(STRING1_END<<1) ; while (Z != address after last character)
 			brne LOOP1
 			cpi ZH, high(STRING1_END<<1)
@@ -123,7 +140,7 @@ storeString1:							; Begin a function with a label
 ; Desc: Cut and paste this and fill in the info at the
 ;		beginning of your functions
 ;-----------------------------------------------------------
-storeString2:							; Begin a function with a label
+storeString2:
 		; Save variables by pushing them to the stack
 		push ZL
 		push ZH
@@ -139,8 +156,8 @@ storeString2:							; Begin a function with a label
 		ldi YH, high($0110)
 
 		LOOP2:
-			LPM mpr, Z+                      ; Load byte and increment Z
-			ST Y+, mpr                       ; Store to data memory
+			lpm mpr, Z+                      ; Load byte and increment Z
+			st Y+, mpr                       ; Store to data memory
 			cpi ZL, low(STRING2_END<<1) ; while (Z != address after last character)
 			brne LOOP2
 			cpi ZH, high(STRING2_END<<1)
@@ -159,6 +176,42 @@ storeString2:							; Begin a function with a label
 		pop ZL
 		ret						; End a function with RET
 
+displayTicker: 
+
+	push ZL
+	push ZH
+	push YL
+	push YH
+	push XL
+	push XH
+
+	ldi XL, low($011F)
+	ldi XH, high($011F)
+	ldi YL, low($0100)
+	ldi YH, high($0100)
+	ldi ZL, low ($0101)
+	ldi ZH, high($0101)
+	ld mpr, X
+	LOOP3:
+		ld temp, Z
+		st Y+, mpr 
+		mov temp, mpr
+		cpi YL, low(STRING2_END<<1)
+		brne LOOP3
+		cpi YH, high(STRING2_END<<1)
+		brne LOOP3
+	rcall LCDWrite
+
+	pop XH
+	pop XL
+	pop YH
+	pop YL
+	pop ZH
+	pop ZL
+	ret
+		
+
+
 
 ;***********************************************************
 ;*	Stored Program Data
@@ -169,7 +222,7 @@ storeString2:							; Begin a function with a label
 ; after the .DB directive; these can help to access the data
 ;-----------------------------------------------------------
 STRING1_BEG:
-.DB		"Matt and Graham "		; Declaring data in ProgMem
+.DB		"Batt and Graham "		; Declaring data in ProgMem
 STRING1_END:
 
 STRING2_BEG:
