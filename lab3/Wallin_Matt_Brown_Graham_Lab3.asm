@@ -1,5 +1,5 @@
 ;***********************************************************
-;*	This is the skeleton file for Lab 3 of ECE 370
+;*	Lab 3, ECE 370
 ;*
 ;*	 Author: Graham Brown and Matt Wallin
 ;*	   Date: 2/6/2026
@@ -189,25 +189,29 @@ displayTicker:
     push temp
 
 TICKER:
-    ; Save the first character
-    ldi YL, low($0100)
-    ldi YH, high($0100)
-    ld temp, Y              ; Save first char in temp
-
-    ldi ZL, low($0101)      ; Z = source (starts at second char)
-    ldi ZH, high($0101)
-    
-SHIFT_STRS:
-    ld mpr, Z+              ; Load from source, increment Z
-    st Y+, mpr              ; Store to dest, increment Y
-    cpi YL, low($0120)      ; Check if we've reached end of buffer
-    brne SHIFT_STRS
-    cpi YH, high($0120)
-    brne SHIFT_STRS
-
-    ; Put the saved first character at the end
+    ; Save the last character
     ldi YL, low($011F)
     ldi YH, high($011F)
+    ld temp, Y              ; Save last char in temp
+
+    ldi ZL, low($011E)      ; Z = source (starts at second to last char)
+    ldi ZH, high($011E)
+    
+SHIFT_STRS:
+    ld mpr, Z               ; Load from source
+    st Y, mpr               ; Store to dest
+    subi YL, 1              ; Y--
+    sbci YH, 0
+    subi ZL, 1              ; Z--
+    sbci ZH, 0
+    cpi ZL, low($00FF)      ; Check if we've gone past start of buffer
+    brne SHIFT_STRS
+    cpi ZH, high($00FF)
+    brne SHIFT_STRS
+
+    ; Put the saved last character at the beginning
+    ldi YL, low($0100)
+    ldi YH, high($0100)
     st Y, temp
 
     rcall LCDWrite
