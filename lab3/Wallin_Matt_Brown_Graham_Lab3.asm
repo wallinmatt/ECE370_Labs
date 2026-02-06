@@ -70,14 +70,14 @@ MAIN:
 
 		; Display the strings on the LCD Display
 
-		in		mpr, PIND
-		andi	mpr, (1<<button4|1<<button5|1<<button7)
-		cpi   mpr, (1<<button4|1<<button7)
+		in mpr, PIND
+		andi mpr, (1<<button4|1<<button5|1<<button7)
+		cpi mpr, (1<<button4|1<<button7)
 		brne CHECK_B4
 		rcall storeString1
 		rcall storeString2
 		rcall LCDWrite
-		rjmp	MAIN
+		rjmp MAIN
 CHECK_B4:	
 		cpi   mpr, (1<<button5|1<<button7)
 		brne CHECK_B7
@@ -215,9 +215,12 @@ SHIFT_STRS:
     st Y, temp
 
     rcall LCDWrite
-	ldi		waitcnt, WTime
+	ldi waitcnt, WTime
 	rcall Wait
-	rjmp TICKER
+	in mpr, PIND
+    andi mpr, (1<<button4|1<<button5)
+	cpi mpr, (1<<button4|1<<button5)
+    breq TICKER
 
     pop temp
     pop mpr
