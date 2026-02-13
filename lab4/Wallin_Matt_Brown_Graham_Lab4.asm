@@ -111,9 +111,24 @@ ADD16:
 ;       result. Always subtracts from the bigger values.
 ;-----------------------------------------------------------
 SUB16:
+		; Load beginning address of first operand into X
+		ldi		XL, low(SUB16_OP1)
+		ldi		XH, high(SUB16_OP1)
+		; Load beginning address of second operand into Y
+		ldi		YL, low(SUB16_OP2)
+		ldi		YH, high(SUB16_OP2)
+		; Load beginning address of result into Z
+		ldi		ZL, low(SUB16_RESULT)
+		ldi		ZH, high(SUB16_RESULT)
 		; Execute the function here
-
-
+		ld		r16, X+
+		ld		r17, X
+		ld		r18, Y+
+		ld		r19, Y
+		sub		r16, r18
+		sbc		r17, r19
+		st		Z+, r16
+		st		Z, r17
 		ret						; End a function with RET
 
 ;-----------------------------------------------------------
