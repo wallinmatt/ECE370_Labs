@@ -42,10 +42,9 @@ INIT:							; The initialization routine
 
 		; Initialize Stack Pointer
 
-		; TODO
 
 		clr		zero			; Set the zero register to zero, maintain
-										; these semantics, meaning, don't
+										; these semantics, meaning, dont
 										; load anything else into it.
 
 ;-----------------------------------------------------------
@@ -399,6 +398,15 @@ ADD16_OP2:
 .org	$0120				; data memory allocation for results
 ADD16_Result:
 		.byte 3				; allocate three bytes for ADD16 result
+
+; Subtract Data Address.
+.org	$0130
+SUB16_OP1:
+		.byte 2
+SUB16_OP2:
+		.byte 2
+SUB16_Result:
+		.byte 2
 
 ;***********************************************************
 ;*	Additional Program Includes
