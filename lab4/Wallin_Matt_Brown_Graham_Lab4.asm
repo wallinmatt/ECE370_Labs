@@ -41,7 +41,10 @@
 INIT:							; The initialization routine
 
 		; Initialize Stack Pointer
-
+		ldi		mpr, low(RAMEND)
+		out		SPL, mpr		; Load SPL with low byte of RAMEND
+		ldi		mpr, high(RAMEND)
+		out		SPH, mpr		; Load SPH with high byte of RAMEND
 
 		clr		zero			; Set the zero register to zero, maintain
 										; these semantics, meaning, dont
@@ -142,6 +145,74 @@ SUB16:
 		st		Z+, r16
 		st		Z, r17
 		ret						; End a function with RET
+
+;-----------------------------------------------------------
+; Func: LOAD_MUL24_OP
+; Desc: Loads the MUL24 operands from program memory into
+;       data memory locations MUL24_OP1 and MUL24_OP2
+;-----------------------------------------------------------
+LOAD_MUL24_OP:
+    ; Save registers
+    push    mpr
+    push    ZL
+    push    ZH
+    push    YL
+    push    YH
+
+    ; Load OperandE1 into MUL24_OP1
+    ldi     ZL, low(OperandE1)
+    ldi     ZH, high(OperandE1)
+    ldi     YL, low(MUL24_OP1)    
+    ldi     YH, high(MUL24_OP1) 
+
+    lpm     mpr, Z+
+    st      Y+, mpr
+    lpm     mpr, Z
+    st      Y+, mpr
+
+    ; Load OperandE2 into MUL24_OP1
+    ldi     ZL, low(OperandE2)
+    ldi     ZH, high(OperandE2)
+    ldi     YL, low(MUL24_OP1)
+    ldi     YH, high(MUL24_OP1)
+
+	lpm		mpr, Z+
+	st		Y+, mpr
+	lpm		mpr, Z
+	st		Y, mpr
+
+	; Load OperandF1 into MUL24_OP2
+    ldi     ZL, low(OperandF1)
+    ldi     ZH, high(OperandF1)
+    ldi     YL, low(MUL24_OP2)    
+    ldi     YH, high(MUL24_OP2) 
+
+    lpm     mpr, Z+
+    st      Y+, mpr
+    lpm     mpr, Z
+    st      Y+, mpr
+
+    ; Load OperandF2 into MUL24_OP2
+    ldi     ZL, low(OperandF2)
+    ldi     ZH, high(OperandF2)
+    ldi     YL, low(MUL24_OP2)
+    ldi     YH, high(MUL24_OP2)
+
+	lpm		mpr, Z+
+	st		Y+, mpr
+	lpm		mpr, Z
+	st		Y, mpr
+
+
+
+    ; Restore registers
+    pop     YH
+    pop     YL
+    pop     ZH
+    pop     ZL
+    pop     mpr
+
+    ret
 
 ;-----------------------------------------------------------
 ; Func: MUL24
@@ -329,21 +400,6 @@ MUL16_ILOOP:
 		pop		B
 		pop		A
 		ret						; End a function with RET
-
-;-----------------------------------------------------------
-; Func: Template function header
-; Desc: Cut and paste this and fill in the info at the
-;       beginning of your functions
-;-----------------------------------------------------------
-FUNC:							; Begin a function with a label
-		; Save variable by pushing them to the stack
-
-		; Execute the function here
-
-		; Restore variable by popping them from the stack in reverse order
-		ret						; End a function with RET
-
-
 ;***********************************************************
 ;*	Stored Program Data
 ;*	Do not  section.
@@ -408,6 +464,13 @@ SUB16_OP2:
 SUB16_Result:
 		.byte 2
 
+.org $0140
+MUL24_OP1:    
+		.byte 3    ; allocate three bytes for first operand
+MUL24_OP2:    
+		.byte 3    ; allocate three bytes for second operand
+MUL24_Result: 
+		.byte 6    ; allocate six bytes for result (48-bit)
 ;***********************************************************
 ;*	Additional Program Includes
 ;***********************************************************
