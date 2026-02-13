@@ -1,8 +1,8 @@
 ;***********************************************************
 ;*	This is the skeleton file for Lab 4 of ECE 375
 ;*
-;*	 Author: Enter your name
-;*	   Date: Enter Date
+;*	 Author: Graham Brown and Matt Wallin
+;*	   Date: 2/13/2026
 ;*
 ;***********************************************************
 
@@ -56,29 +56,36 @@ INIT:							; The initialization routine
 MAIN:							; The Main program
 
 		; Call function to load ADD16 operands
+		rcall LOAD_ADD_OP
 		nop ; Check load ADD16 operands (Set Break point here #1)
 
 		; Call ADD16 function to display its results (calculate FCBA + FFFF)
+		rcall ADD16
 		nop ; Check ADD16 result (Set Break point here #2)
 
 
 		; Call function to load SUB16 operands
+		rcall LOAD_SUB_OP
 		nop ; Check load SUB16 operands (Set Break point here #3)
 
 		; Call SUB16 function to display its results (calculate FCB9 - E420)
+		rcall SUB16
 		nop ; Check SUB16 result (Set Break point here #4)
 
 
 		; Call function to load MUL24 operands
+		rcall LOAD_MUL24_OP
 		nop ; Check load MUL24 operands (Set Break point here #5)
 
 		; Call MUL24 function to display its results (calculate FFFFFF * FFFFFF)
+		rcall MUL24
 		nop ; Check MUL24 result (Set Break point here #6)
 
 		; Setup the COMPOUND function direct test
 		nop ; Check load COMPOUND operands (Set Break point here #7)
 
 		; Call the COMPOUND function
+		rcall COMPOUND
 		nop ; Check COMPOUND result (Set Break point here #8)
 
 DONE:	rjmp	DONE			; Create an infinite while loop to signify the
@@ -101,25 +108,25 @@ LOAD_ADD_OP:
 	push	YL
 	push	YH
 
-	ldi	ZL, low(OperandA)
-	ldi	ZH, high(OperandA)
+	ldi	ZL, low(OperandA << 1)
+	ldi	ZH, high(OperandA << 1)
 	ldi	YL, low(ADD16_OP1)
 	ldi	YH, high(ADD16_OP1)
 
 	lpm	mpr, Z+
 	st	Y+, mpr
 	lpm	mpr, Z
-	st	Y+, mpr
+	st	Y, mpr
 
-	ldi	ZL, low(OperandB)
-	ldi	ZH, high(OperandB)
+	ldi	ZL, low(OperandB << 1)
+	ldi	ZH, high(OperandB << 1)
 	ldi	YL, low(ADD16_OP2)
 	ldi	YH, high(ADD16_OP2)
 
 	lpm	mpr, Z+
 	st	Y+, mpr
 	lpm	mpr, Z
-	st	Y+, mpr
+	st	Y, mpr
 
 	pop	YH
 	pop	YL
@@ -184,8 +191,8 @@ LOAD_SUB_OP:
 	push	YL
 	push	YH
 
-	ldi	ZL, low(OperandC)
-	ldi	ZH, high(OperandC)
+	ldi	ZL, low(OperandC << 1)
+	ldi	ZH, high(OperandC << 1)
 	ldi	YL, low(SUB16_OP1)
 	ldi	YH, high(SUB16_OP1)
 
@@ -194,8 +201,8 @@ LOAD_SUB_OP:
 	lpm	mpr, Z
 	st	Y+, mpr
 
-	ldi	ZL, low(OperandD)
-	ldi	ZH, high(OperandD)
+	ldi	ZL, low(OperandD << 1)
+	ldi	ZH, high(OperandD << 1)
 	ldi	YL, low(SUB16_OP2)
 	ldi	YH, high(SUB16_OP2)
 
@@ -262,8 +269,8 @@ LOAD_MUL24_OP:
     push    YH
 
     ; Load OperandE1 into MUL24_OP1
-    ldi     ZL, low(OperandE1)
-    ldi     ZH, high(OperandE1)
+    ldi     ZL, low(OperandE1 << 1)
+    ldi     ZH, high(OperandE1 << 1)
     ldi     YL, low(MUL24_OP1)    
     ldi     YH, high(MUL24_OP1) 
 
@@ -273,19 +280,14 @@ LOAD_MUL24_OP:
     st      Y+, mpr
 
     ; Load OperandE2 into MUL24_OP1
-    ldi     ZL, low(OperandE2)
-    ldi     ZH, high(OperandE2)
-    ldi     YL, low(MUL24_OP1)
-    ldi     YH, high(MUL24_OP1)
+    ldi     ZL, low(OperandE2 << 1)
 
-	lpm		mpr, Z+
-	st		Y+, mpr
 	lpm		mpr, Z
 	st		Y, mpr
 
 	; Load OperandF1 into MUL24_OP2
-    ldi     ZL, low(OperandF1)
-    ldi     ZH, high(OperandF1)
+    ldi     ZL, low(OperandF1 << 1)
+    ldi     ZH, high(OperandF1 << 1)
     ldi     YL, low(MUL24_OP2)    
     ldi     YH, high(MUL24_OP2) 
 
@@ -295,13 +297,8 @@ LOAD_MUL24_OP:
     st      Y+, mpr
 
     ; Load OperandF2 into MUL24_OP2
-    ldi     ZL, low(OperandF2)
-    ldi     ZH, high(OperandF2)
-    ldi     YL, low(MUL24_OP2)
-    ldi     YH, high(MUL24_OP2)
+    ldi     ZL, low(OperandF2 << 1)
 
-	lpm		mpr, Z+
-	st		Y+, mpr
 	lpm		mpr, Z
 	st		Y, mpr
 
@@ -341,19 +338,19 @@ MUL24:
 		clr		zero			; Maintain zero semantics
 
 		; Set Y to beginning address of B
-		ldi		YL, low(addrB)	; Load low byte
-		ldi		YH, high(addrB)	; Load high byte
+		ldi		YL, low(MUL24_OP2)	; Load low byte
+		ldi		YH, high(MUL24_OP2)	; Load high byte
 
 		; Set Z to begginning address of resulting Product
-		ldi		ZL, low(LAddrP)	; Load low byte
-		ldi		ZH, high(LAddrP); Load high byte
+		ldi		ZL, low(MUL24_Result)	; Load low byte
+		ldi		ZH, high(MUL24_Result); Load high byte
 
 		; Begin outer for loop
 		ldi		oloop, 3		; Load counter
 MUL24_OLOOP:
 		; Set X to beginning address of A
-		ldi		XL, low(addrA)	; Load low byte
-		ldi		XH, high(addrA)	; Load high byte
+		ldi		XL, low(MUL24_OP1)	; Load low byte
+		ldi		XH, high(MUL24_OP1)	; Load high byte
 
 		; Begin inner for loop
 		ldi		iloop, 3		; Load counter
@@ -365,9 +362,12 @@ MUL24_ILOOP:
 		ld		B, Z+			; Get the next result byte from memory
 		add		rlo, A			; rlo <= rlo + A
 		adc		rhi, B			; rhi <= rhi + B + carry
-		ld		A, Z			; Get a third byte from the result
+		ld		A, Z+			; Get a third byte from the result
 		adc		A, zero			; Add carry to A
-		st		Z, A			; Store third byte to memory
+		ld		B, Z
+		adc		B, zero
+		st		Z, B
+		st		-Z, A			; Store third byte to memory
 		st		-Z, rhi			; Store second byte to memory
 		st		-Z, rlo			; Store first byte to memory
 		adiw	ZH:ZL, 1		; Z <= Z + 1
@@ -375,7 +375,7 @@ MUL24_ILOOP:
 		brne	MUL24_ILOOP		; Loop if iLoop != 0
 		; End inner for loop
 
-		sbiw	ZH:ZL, 2		; Z <= Z - 1
+		sbiw	ZH:ZL, 2		; Z <= Z - 2
 		adiw	YH:YL, 1		; Y <= Y + 1
 		dec		oloop			; Decrement counter
 		brne	MUL24_OLOOP		; Loop if oLoop != 0
@@ -444,9 +444,9 @@ COMPOUND:
 		ldi	YL, low(ADD16_OP1)
 		ldi	YH, high(ADD16_OP1)
 
-		lpm	mpr, Z+
+		ld	mpr, Z+
 		st	Y+, mpr
-		lpm	mpr, Z
+		ld	mpr, Z
 		st	Y+, mpr
 
 		ldi	ZL, low(OperandI)
@@ -454,9 +454,9 @@ COMPOUND:
 		ldi	YL, low(ADD16_OP2)
 		ldi	YH, high(ADD16_OP2)
 
-		lpm	mpr, Z+
+		ld	mpr, Z+
 		st	Y+, mpr
-		lpm	mpr, Z
+		ld	mpr, Z
 		st	Y+, mpr
 		; Perform addition next to calculate (G - H) + I
 		rcall ADD16
@@ -467,11 +467,11 @@ COMPOUND:
 		ldi     YL, low(MUL24_OP1)    
 		ldi     YH, high(MUL24_OP1) 
 
-		lpm     mpr, Z+
+		ld     mpr, Z+
 		st      Y+, mpr
-		lpm     mpr, Z+
+		ld     mpr, Z+
 		st      Y+, mpr
-		lpm		mpr, Z
+		ld		mpr, Z
 		st		Y, mpr
 
 		ldi     ZL, low(ADD16_Result)
@@ -479,11 +479,11 @@ COMPOUND:
 		ldi		YL, low(MUL24_OP2)
 		ldi		YH, high(MUL24_OP2)
 
-		lpm     mpr, Z+
+		ld     mpr, Z+
 		st      Y+, mpr
-		lpm     mpr, Z+
+		ld     mpr, Z+
 		st      Y+, mpr
-		lpm		mpr, Z
+		ld		mpr, Z
 		st		Y, mpr
 
 		; Perform multiplication to calculate ((G - H) + I)^2
@@ -642,6 +642,7 @@ MUL24_OP1:
 		.byte 3    ; allocate three bytes for first operand
 MUL24_OP2:    
 		.byte 3    ; allocate three bytes for second operand
+.org $0150
 MUL24_Result: 
 		.byte 6    ; allocate six bytes for result (48-bit)
 ;***********************************************************
