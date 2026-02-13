@@ -96,13 +96,26 @@ ADD16:
 		; Load beginning address of first operand into X
 		ldi		XL, low(ADD16_OP1)	; Load low byte of address
 		ldi		XH, high(ADD16_OP1)	; Load high byte of address
-
+	
 		; Load beginning address of second operand into Y
-
+		ldi 		YL, low(ADD16_OP2)
+		ldi		YH, high(ADD16_OP2)
 		; Load beginning address of result into Z
-
+		ldi		ZL, low(ADD16_RESULT)
+		ldi		ZH, high(ADD16_RESULT)
 		; Execute the function
-
+		ld 		r16, X+
+		ld		r17, X
+		ld		r18, Y+
+		ld		r19, Y
+		add		r16, r18
+		adc		r17, r19
+		clr 		r18
+		clr		r19
+		adc 		r18, r19
+		st		Z+, r16
+		st		Z+, r17
+		st		Z, r18
 		ret						; End a function with RET
 
 ;-----------------------------------------------------------
@@ -302,6 +315,15 @@ ADD16_OP2:
 .org	$0120				; data memory allocation for results
 ADD16_Result:
 		.byte 3				; allocate three bytes for ADD16 result
+
+; Subtract Data Address.
+.org	$0130
+SUB16_OP1:
+		.byte 2
+SUB16_OP2:
+		.byte 2
+SUB16_Result:
+		.byte 2
 
 ;***********************************************************
 ;*	Additional Program Includes
