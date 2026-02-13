@@ -414,8 +414,8 @@ COMPOUND:
 		push YH
 
 		; Setup SUB16 with operands G and H
-		ldi	ZL, low(OperandG)
-		ldi	ZH, high(OperandG)
+		ldi	ZL, low(OperandG << 1)
+		ldi	ZH, high(OperandG << 1)
 		ldi	YL, low(SUB16_OP1)
 		ldi	YH, high(SUB16_OP1)
 
@@ -424,8 +424,8 @@ COMPOUND:
 		lpm	mpr, Z
 		st	Y+, mpr
 
-		ldi	ZL, low(OperandH)
-		ldi	ZH, high(OperandH)
+		ldi	ZL, low(OperandH << 1)
+		ldi	ZH, high(OperandH << 1)
 		ldi	YL, low(SUB16_OP2)
 		ldi	YH, high(SUB16_OP2)
 
@@ -449,18 +449,19 @@ COMPOUND:
 		ld	mpr, Z
 		st	Y+, mpr
 
-		ldi	ZL, low(OperandI)
-		ldi	ZH, high(OperandI)
+		ldi	ZL, low(OperandI << 1)
+		ldi	ZH, high(OperandI << 1)
 		ldi	YL, low(ADD16_OP2)
 		ldi	YH, high(ADD16_OP2)
 
-		ld	mpr, Z+
+		lpm	mpr, Z+
 		st	Y+, mpr
-		ld	mpr, Z
+		lpm	mpr, Z
 		st	Y+, mpr
 		; Perform addition next to calculate (G - H) + I
 		rcall ADD16
 
+		rcall CLEAR_MUL24_RESULT
 		; Setup the MUL24 function with ADD16 result as both operands
 		ldi     ZL, low(ADD16_Result)
 		ldi     ZH, high(ADD16_Result)
@@ -488,6 +489,12 @@ COMPOUND:
 
 		; Perform multiplication to calculate ((G - H) + I)^2
 		rcall MUL24
+
+		pop YH
+		pop YL
+		pop ZH
+		pop ZL
+		pop mpr
 
 		ret						; End a function with RET
 
@@ -573,6 +580,25 @@ MUL16_ILOOP:
 		pop		B
 		pop		A
 		ret						; End a function with RET
+
+
+CLEAR_MUL24_RESULT:
+        push    mpr
+        push    ZL
+        push    ZH
+        clr     mpr
+        ldi     ZL, low(MUL24_Result)
+        ldi     ZH, high(MUL24_Result)
+        st      Z+, mpr
+        st      Z+, mpr
+        st      Z+, mpr
+        st      Z+, mpr
+        st      Z+, mpr
+        st      Z, mpr
+        pop     ZH
+        pop     ZL
+        pop     mpr
+        ret
 ;***********************************************************
 ;*	Stored Program Data
 ;*	Do not  section.
@@ -645,6 +671,8 @@ MUL24_OP2:
 .org $0150
 MUL24_Result: 
 		.byte 6    ; allocate six bytes for result (48-bit)
+
+
 ;***********************************************************
 ;*	Additional Program Includes
 ;***********************************************************
