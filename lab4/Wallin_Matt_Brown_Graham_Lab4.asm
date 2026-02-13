@@ -407,16 +407,87 @@ MUL24_ILOOP:
 ;       All result bytes should be cleared before beginning.
 ;-----------------------------------------------------------
 COMPOUND:
+		push mpr
+		push ZL
+		push ZH
+		push YL
+		push YH
 
 		; Setup SUB16 with operands G and H
+		ldi	ZL, low(OperandG)
+		ldi	ZH, high(OperandG)
+		ldi	YL, low(SUB16_OP1)
+		ldi	YH, high(SUB16_OP1)
+
+		lpm	mpr, Z+
+		st	Y+, mpr
+		lpm	mpr, Z
+		st	Y+, mpr
+
+		ldi	ZL, low(OperandH)
+		ldi	ZH, high(OperandH)
+		ldi	YL, low(SUB16_OP2)
+		ldi	YH, high(SUB16_OP2)
+
+		lpm	mpr, Z+
+		st	Y+, mpr
+		lpm	mpr, Z
+		st	Y+, mpr
+
 		; Perform subtraction to calculate G - H
+		rcall SUB16
 
 
 		; Setup the ADD16 function with SUB16 result and operand I
+		ldi	ZL, low(SUB16_Result)
+		ldi	ZH, high(SUB16_Result)
+		ldi	YL, low(ADD16_OP1)
+		ldi	YH, high(ADD16_OP1)
+
+		lpm	mpr, Z+
+		st	Y+, mpr
+		lpm	mpr, Z
+		st	Y+, mpr
+
+		ldi	ZL, low(OperandI)
+		ldi	ZH, high(OperandI)
+		ldi	YL, low(ADD16_OP2)
+		ldi	YH, high(ADD16_OP2)
+
+		lpm	mpr, Z+
+		st	Y+, mpr
+		lpm	mpr, Z
+		st	Y+, mpr
 		; Perform addition next to calculate (G - H) + I
+		rcall ADD16
 
 		; Setup the MUL24 function with ADD16 result as both operands
+		ldi     ZL, low(ADD16_Result)
+		ldi     ZH, high(ADD16_Result)
+		ldi     YL, low(MUL24_OP1)    
+		ldi     YH, high(MUL24_OP1) 
+
+		lpm     mpr, Z+
+		st      Y+, mpr
+		lpm     mpr, Z+
+		st      Y+, mpr
+		lpm		mpr, Z
+		st		Y, mpr
+
+		ldi     ZL, low(ADD16_Result)
+		ldi		ZH, high(ADD16_Result)
+		ldi		YL, low(MUL24_OP2)
+		ldi		YH, high(MUL24_OP2)
+
+		lpm     mpr, Z+
+		st      Y+, mpr
+		lpm     mpr, Z+
+		st      Y+, mpr
+		lpm		mpr, Z
+		st		Y, mpr
+
 		; Perform multiplication to calculate ((G - H) + I)^2
+		rcall MUL24
 
 		ret						; End a function with RET
 
@@ -528,7 +599,7 @@ OperandF1:
 OperandF2:
 	.DW	0X00FF
 
-; Compoud operands
+; Compound operands
 OperandG:
 	.DW	0xFCBA				; test value for operand G
 OperandH:
