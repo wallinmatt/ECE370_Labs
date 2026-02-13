@@ -94,7 +94,50 @@ DONE:	rjmp	DONE			; Create an infinite while loop to signify the
 ;       where the high byte of the result contains the carry
 ;       out bit.
 ;-----------------------------------------------------------
+LOAD_ADD_OP:
+	push	mpr
+	push	ZL
+	push	ZH
+	push	YL
+	push	YH
+
+	ldi	ZL, low(OperandA)
+	ldi	ZH, high(OperandA)
+	ldi	YL, low(ADD16_OP1)
+	ldi	YH, high(ADD16_OP1)
+
+	lpm	mpr, Z+
+	st	Y+, mpr
+	lpm	mpr, Z
+	st	Y+, mpr
+
+	ldi	ZL, low(OperandB)
+	ldi	ZH, high(OperandB)
+	ldi	YL, low(ADD16_OP2)
+	ldi	YH, high(ADD16_OP2)
+
+	lpm	mpr, Z+
+	st	Y+, mpr
+	lpm	mpr, Z
+	st	Y+, mpr
+
+	pop	YH
+	pop	YL
+	pop	ZH
+	pop	ZL
+	pop	mpr
+
+
 ADD16:
+		push	A
+		push	B
+		push	XH
+		push	XL
+		push	YH
+		push	YL
+		push	ZH
+		push	ZL
+
 		; Load beginning address of first operand into X
 		ldi		XL, low(ADD16_OP1)	; Load low byte of address
 		ldi		XH, high(ADD16_OP1)	; Load high byte of address
@@ -118,6 +161,15 @@ ADD16:
 		st		Z+, r16
 		st		Z+, r17
 		st		Z, r18
+		
+		pop	ZL
+		pop	ZH
+		pop	YL
+		pop	YH
+		pop	XL
+		pop	XH
+		pop	B
+		pop	A
 		ret						; End a function with RET
 
 ;-----------------------------------------------------------
@@ -125,7 +177,48 @@ ADD16:
 ; Desc: Subtracts two 16-bit numbers and generates a 16-bit
 ;       result. Always subtracts from the bigger values.
 ;-----------------------------------------------------------
+LOAD_SUB_OP:
+	push	mpr
+	push	ZL
+	push	ZH
+	push	YL
+	push	YH
+
+	ldi	ZL, low(OperandC)
+	ldi	ZH, high(OperandC)
+	ldi	YL, low(SUB16_OP1)
+	ldi	YH, high(SUB16_OP1)
+
+	lpm	mpr, Z+
+	st	Y+, mpr
+	lpm	mpr, Z
+	st	Y+, mpr
+
+	ldi	ZL, low(OperandD)
+	ldi	ZH, high(OperandD)
+	ldi	YL, low(SUB16_OP2)
+	ldi	YH, high(SUB16_OP2)
+
+	lpm	mpr, Z+
+	st	Y+, mpr
+	lpm	mpr, Z
+	st	Y+, mpr
+
+	pop	YH
+	pop	YL
+	pop	ZH
+	pop	ZL
+	pop	mpr
 SUB16:
+		push 	A
+		push 	B
+		push 	XH
+		push 	XL
+		push	YH
+		push	YL
+		push	ZH
+		push	ZL
+
 		; Load beginning address of first operand into X
 		ldi		XL, low(SUB16_OP1)
 		ldi		XH, high(SUB16_OP1)
@@ -144,6 +237,15 @@ SUB16:
 		sbc		r17, r19
 		st		Z+, r16
 		st		Z, r17
+		
+		pop	ZL
+		pop	ZH
+		pop	YL
+		pop	YH
+		pop	XL
+		pop	XH
+		pop	B
+		pop	A
 		ret						; End a function with RET
 
 ;-----------------------------------------------------------
