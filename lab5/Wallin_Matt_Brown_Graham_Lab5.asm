@@ -71,10 +71,13 @@ INIT:							; The initialization routine
 
 		; Initialize external interrupts
 			; Set the Interrupt Sense Control to falling edge
-
+		ldi mpr, 0b1000_1010
+		sts EICRA, mpr				; Sets INT0, 1, 3 to falling edge
 		; Configure the External Interrupt Mask
-
+		ldi mpr, 0b0000_1011			; Activates INT 0, 1, 3
+		out EIMSK, mpr
 		; Turn on interrupts
+		sei
 			; NOTE: This must be the last thing to do in the INIT function
 
 ;***********************************************************
