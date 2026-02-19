@@ -12,6 +12,8 @@
 ;*	Internal Register Definitions and Constants
 ;***********************************************************
 .def	mpr = r16				; Multipurpose register
+.def	rcnt = r17				; Right Count
+.def	lcnt = r18				; Left Count
 
 .equ	WskrR = 0				; Right Whisker Input Bit
 .equ	WskrL = 1				; Left Whisker Input Bit
@@ -27,18 +29,16 @@
 .org	$0000					; Beginning of IVs
 		rjmp 	INIT			; Reset interrupt
 
-		; Set up interrupt vectors for any interrupts being used
-
-		; This is just an example:
-;.org	$002E					; Analog Comparator IV
-;		rcall	HandleAC		; Call function to handle interrupt
-;		reti					; Return from interrupt
 .org	$0002
 		rcall	HitRight
 		reti
 
 .org	$0004
 		rcall	HitLeft
+		reti
+
+.org	$0008
+		rcall LCDClr
 		reti
 
 .org	$0056					; End of Interrupt Vectors
@@ -76,6 +76,7 @@ INIT:							; The initialization routine
 
 		; Turn on interrupts
 			; NOTE: This must be the last thing to do in the INIT function
+		sei
 
 ;***********************************************************
 ;*	Main Program
@@ -190,4 +191,3 @@ FUNC:							; Begin a function with a label
 ;*	Additional Program Includes
 ;***********************************************************
 ; There are no additional file includes for this program
-
