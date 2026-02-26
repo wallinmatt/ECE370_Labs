@@ -11,7 +11,30 @@
 ;***********************************************************
 ;*	Internal Register Definitions and Constants
 ;***********************************************************
+.def    zero = r0       ; Zero register
 .def	mpr = r16				; Multipurpose register
+.def	rcnt = r17				; Right Count
+.def	lcnt = r18				; Left Count
+.def	ilcnt = r19				; Inner Loop Counter
+.def	olcnt = r23				; Outer Loop Counter
+.def    waitcnt = r24   ; Wait counter
+
+.equ	WTime = 100				; Time to wait in wait loop
+
+.equ	EngEnR = 5				; Right Engine Enable Bit
+.equ	EngEnL = 6				; Left Engine Enable Bit
+.equ	EngDirR = 4				; Right Engine Direction Bit
+.equ	EngDirL = 7				; Left Engine Direction Bit
+
+;/////////////////////////////////////////////////////////////
+;These macros are the values to make the TekBot Move.
+;/////////////////////////////////////////////////////////////
+
+.equ	MovFwd = (1<<EngDirR|1<<EngDirL)	; Move Forward Command
+.equ	MovBck = $00				; Move Backward Command
+.equ	TurnR = (1<<EngDirL)			; Turn Right Command
+.equ	TurnL = (1<<EngDirR)			; Turn Left Command
+.equ	Halt = (1<<EngEnR|1<<EngEnL)		; Halt Command
 
 .equ	WskrR = 0				; Right Whisker Input Bit
 .equ	WskrL = 1				; Left Whisker Input Bit
@@ -27,18 +50,16 @@
 .org	$0000					; Beginning of IVs
 		rjmp 	INIT			; Reset interrupt
 
-		; Set up interrupt vectors for any interrupts being used
-
-		; This is just an example:
-;.org	$002E					; Analog Comparator IV
-;		rcall	HandleAC		; Call function to handle interrupt
-;		reti					; Return from interrupt
 .org	$0002
 		rcall	HitRight
 		reti
 
 .org	$0004
 		rcall	HitLeft
+		reti
+
+.org	$0008
+		rcall	ClearCounters
 		reti
 
 .org	$0056					; End of Interrupt Vectors
@@ -79,14 +100,20 @@ INIT:							; The initialization routine
 		; Turn on interrupts
 		sei
 			; NOTE: This must be the last thing to do in the INIT function
+		clr rcnt
+		clr lcnt
+		rcall LCDInit
+		rcall LCDBacklightOn
+		rcall DisplayCounters
+		sei
 
 ;***********************************************************
 ;*	Main Program
 ;***********************************************************
 MAIN:							; The Main program
 
-		; TODO
-
+		ldi mpr, MovFwd
+		out PORTB, mpr
 		rjmp	MAIN			; Create an infinite while loop to signify the
 								; end of the program.
 
@@ -106,10 +133,13 @@ MAIN:							; The Main program
 ;		is triggered.
 ;----------------------------------------------------------------
 HitRight:
-		push	mpr			; Save mpr register
-		push	waitcnt			; Save wait register
-		in		mpr, SREG	; Save program state
-		push	mpr			;
+		push mpr
+		push waitcnt
+		in mpr, SREG
+		push mpr
+		cli                     ; disable interrupts during behavior
+		inc rcnt
+		rcall DisplayCounters
 
 		; Move Backwards for a second
 		ldi		mpr, MovBck	; Load Move Backward command
@@ -127,11 +157,13 @@ HitRight:
 		ldi		mpr, MovFwd	; Load Move Forward command
 		out		PORTB, mpr	; Send command to port
 
-		pop		mpr		; Restore program state
-		out		SREG, mpr	;
-		pop		waitcnt		; Restore wait register
-		pop		mpr		; Restore mpr
-		ret				; Return from subroutine
+		ldi mpr, 0b00001011     ; clear INT0, INT1, INT3 pending flags
+		out EIFR, mpr
+		pop mpr
+		out SREG, mpr           ; re-enables I-bit naturally
+		pop waitcnt
+		pop mpr
+		ret
 
 ;----------------------------------------------------------------
 ; Sub:	HitLeft
@@ -139,10 +171,13 @@ HitRight:
 ;		is triggered.
 ;----------------------------------------------------------------
 HitLeft:
-		push	mpr			; Save mpr register
-		push	waitcnt			; Save wait register
-		in		mpr, SREG	; Save program state
-		push	mpr			;
+		push mpr
+		push waitcnt
+		in mpr, SREG
+		push mpr
+		cli                     ; disable interrupts during behavior
+		inc lcnt
+		rcall DisplayCounters
 
 		; Move Backwards for a second
 		ldi		mpr, MovBck	; Load Move Backward command
@@ -160,13 +195,81 @@ HitLeft:
 		ldi		mpr, MovFwd	; Load Move Forward command
 		out		PORTB, mpr	; Send command to port
 
-		pop		mpr		; Restore program state
-		out		SREG, mpr	;
+		ldi mpr, 0b00001011     ; clear INT0, INT1, INT3 pending flags
+		out EIFR, mpr
+		pop mpr
+		out SREG, mpr           ; re-enables I-bit naturally
+		pop waitcnt
+		pop mpr
+		ret
+
+DisplayCounters:
+    push mpr
+    push XL
+    push XH
+
+    ; Clear both lines
+    rcall LCDClr
+
+    ; Write "R:" and rcnt to line 1
+    ldi XL, low($0100)
+    ldi XH, high($0100)
+    ldi mpr, 'R'
+    st X+, mpr
+    ldi mpr, ':'
+    st X+, mpr
+    mov mpr, rcnt
+    rcall Bin2ASCII
+
+    ; Write "L:" and lcnt to line 2
+    ldi XL, low($0110)
+    ldi XH, high($0110)
+    ldi mpr, 'L'
+    st X+, mpr
+    ldi mpr, ':'
+    st X+, mpr
+    mov mpr, lcnt
+    rcall Bin2ASCII
+
+    rcall LCDWrite
+
+    pop XH
+    pop XL
+    pop mpr
+    ret
+
+ClearCounters:
+		clr rcnt
+		clr lcnt
+		rcall DisplayCounters
+		ret
+
+;----------------------------------------------------------------
+; Sub:	Wait
+; Desc:	A wait loop that is 16 + 159975*waitcnt cycles or roughly
+;		waitcnt*10ms.  Just initialize wait for the specific amount
+;		of time in 10ms intervals. Here is the general eqaution
+;		for the number of clock cycles in the wait loop:
+;			(((((3*ilcnt)-1+4)*olcnt)-1+4)*waitcnt)-1+16
+;----------------------------------------------------------------
+Wait:
+		push	waitcnt			; Save wait register
+		push	ilcnt			; Save ilcnt register
+		push	olcnt			; Save olcnt register
+
+Loop:	ldi		olcnt, 224		; load olcnt register
+OLoop:	ldi		ilcnt, 237		; load ilcnt register
+ILoop:	dec		ilcnt			; decrement ilcnt
+		brne	ILoop			; Continue Inner Loop
+		dec		olcnt		; decrement olcnt
+		brne	OLoop			; Continue Outer Loop
+		dec		waitcnt		; Decrement wait
+		brne	Loop			; Continue Wait loop
+
+		pop		olcnt		; Restore olcnt register
+		pop		ilcnt		; Restore ilcnt register
 		pop		waitcnt		; Restore wait register
-		pop		mpr		; Restore mpr
 		ret				; Return from subroutine
-
-
 
 ;-----------------------------------------------------------
 ; Func: Template function header
@@ -192,5 +295,6 @@ FUNC:							; Begin a function with a label
 ;***********************************************************
 ;*	Additional Program Includes
 ;***********************************************************
-; There are no additional file includes for this program
+.include "LCDDriver.asm"
+
 
