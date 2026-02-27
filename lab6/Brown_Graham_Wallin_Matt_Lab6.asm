@@ -13,6 +13,13 @@
 ;*	Internal Register Definitions and Constants
 ;***********************************************************
 .def	mpr = r16				; Multipurpose register
+.def	spd = r17
+.def	zero = r18
+
+.equ	Spd1 = 0
+.equ	Spd2 = 1
+.equ	Spd3 = 2
+.equ	Spd4 = 3
 
 .equ	EngEnR = 5				; right Engine Enable Bit
 .equ	EngEnL = 6				; left Engine Enable Bit
@@ -30,7 +37,14 @@
 .org	$0000
 		rjmp	INIT			; reset interrupt
 
-		; place instructions in interrupt vectors here, if needed
+.org	$0002
+		rjmp	SPEED_DOWN		; INT0 - speed down
+
+.org	$0004
+		rjmp	SPEED_UP		; INT1 - speed up
+
+.org	$000E
+		rjmp	SPEED_MAX		; INT3 - max speed
 
 .org	$0056					; end of interrupt vectors
 
@@ -39,57 +53,166 @@
 ;***********************************************************
 INIT:
 		; Initialize the Stack Pointer
+		ldi		mpr, low(RAMEND)
+		out		SPL, mpr
+		ldi		mpr, high(RAMEND)
+		out		SPH, mpr
 
-		; Configure I/O ports
+		; Clear zero register
+		clr		zero
 
-		; Configure External Interrupts, if needed
+		; Initialize Port B for output (motors)
+		ldi		mpr, 0xFF
+		out		DDRB, mpr		; set all Port B pins as output
+		ldi		mpr, 0x00
+		out		PORTB, mpr		; initialize all Port B outputs low
+
+		; Initialize Port D for input (buttons)
+		ldi		mpr, 0x00
+		out		DDRD, mpr		; set all Port D pins as input
+		ldi		mpr, 0xFF
+		out		PORTD, mpr		; enable pull-up resistors on Port D
+
+		; Configure External Interrupts
+		ldi		mpr, 0b1000_1010
+		sts		EICRA, mpr		; INT0, INT1, INT3 falling edge
+		ldi		mpr, 0b0000_1011
+		out		EIMSK, mpr		; enable INT0, INT1, INT3
 
 		; Configure 16-bit Timer/Counter 1A and 1B
+		clr		mpr
+		sts		TCNT1H, mpr
+		sts		TCNT1L, mpr
 
 		; Fast PWM, 8-bit mode, no prescaling
+		ldi		mpr, 0b10110001
+		sts		TCCR1A, mpr
+		ldi		mpr, 0b00010001
+		sts		TCCR1B, mpr
 
-		; Set TekBot to Move Forward (1<<EngDirR|1<<EngDirL) on Port B
+		; Set initial speed to 0
+		clr		spd
+		sts		OCR1AL, zero
+		sts		OCR1BL, zero
 
-		; Set initial speed, display on Port B pins 3:0
+		; Set TekBot to Move Forward on Port B
+		ldi		mpr, (1<<EngDirR)|(1<<EngDirL)|(1<<EngEnR)|(1<<EngEnL)
+		out		PORTB, mpr
 
-		; Enable global interrupts (if any are used)
+		; NOTE: This must be the last thing to do in the INIT function
+		sei
 
 ;***********************************************************
 ;*	Main Program
 ;***********************************************************
 MAIN:
-		; poll Port D pushbuttons (if needed)
-
-								; if pressed, adjust speed
-								; also, adjust speed indication
-
-		rjmp	MAIN			; return to top of MAIN
+		rjmp	MAIN			; loop forever, interrupts handle everything
 
 ;***********************************************************
 ;*	Functions and Subroutines
 ;***********************************************************
 
+SPEED_DOWN:
+		push	mpr
+		push	spd
+		in		mpr, SREG
+		push	mpr
+
+		cpi		spd, 0
+		breq	SPEED_DOWN_DONE
+
+		; Decrement speed level
+		dec		spd
+
+		; Calculate new OCR value (spd * 17)
+		ldi		mpr, 17
+		mul		spd, mpr		; result in r0
+		clr		r1				; clear r1 after mul
+		sts		OCR1AL, r0
+		sts		OCR1BL, r0
+
+		; Update Port B - preserve direction bits, update speed bits
+		in		mpr, PORTB
+		andi	mpr, 0b11110000		; clear lower nibble
+		or		mpr, spd			; OR in speed LEVEL (0-15), not OCR value
+		out		PORTB, mpr
+
+SPEED_DOWN_DONE:
+		pop		mpr
+		out		SREG, mpr
+		pop		spd
+		pop		mpr
+		reti
+
 ;-----------------------------------------------------------
-; Func:	Template function header
-; Desc:	Cut and paste this and fill in the info at the
-;		beginning of your functions
+
+SPEED_UP:
+		push	mpr
+		push	spd
+		in		mpr, SREG
+		push	mpr
+
+		cpi		spd, 15
+		breq	SPEED_UP_DONE
+
+		; Increment speed level
+		inc		spd
+
+		; Calculate new OCR value (spd * 17)
+		ldi		mpr, 17
+		mul		spd, mpr		; result in r0
+		clr		r1				; clear r1 after mul
+		sts		OCR1AL, r0
+		sts		OCR1BL, r0
+
+		; Update Port B - preserve direction bits, update speed bits
+		in		mpr, PORTB
+		andi	mpr, 0b11110000	; clear lower nibble
+		or		mpr, r0			; OR in new speed value
+		out		PORTB, mpr
+
+SPEED_UP_DONE:
+		pop		mpr
+		out		SREG, mpr
+		pop		spd
+		pop		mpr
+		reti
+
 ;-----------------------------------------------------------
-FUNC:	; Begin a function with a label
 
-		; If needed, save variables by pushing to the stack
+SPEED_MAX:
+		push	mpr
+		push	spd
+		in		mpr, SREG
+		push	mpr
 
-		; Execute the function here
+		; Set speed to max
+		ldi		spd, 15
 
-		; Restore any saved variables by popping from stack
+		; 15 * 17 = 255
+		ldi		mpr, 17
+		mul		spd, mpr		; result in r0 = 255
+		clr		r1				; clear r1 after mul
+		sts		OCR1AL, r0
+		sts		OCR1BL, r0
 
-		ret						; End a function with RET
+		; Update Port B - preserve direction bits, update speed bits
+		in		mpr, PORTB
+		andi	mpr, 0b11110000	; clear lower nibble
+		ori		mpr, 0b00001111	; set all speed bits (speed 15)
+		out		PORTB, mpr
+
+SPEED_MAX_DONE:
+		pop		mpr
+		out		SREG, mpr
+		pop		spd
+		pop		mpr
+		reti
 
 ;***********************************************************
 ;*	Stored Program Data
 ;***********************************************************
-		; Enter any stored data you might need here
 
 ;***********************************************************
 ;*	Additional Program Includes
 ;***********************************************************
-		; There are no additional file includes for this program
