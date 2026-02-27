@@ -37,15 +37,6 @@
 .org	$0000
 		rjmp	INIT			; reset interrupt
 
-.org	$0002
-		rjmp	SPEED_DOWN		; INT0 - speed down
-
-.org	$0004
-		rjmp	SPEED_UP		; INT1 - speed up
-
-.org	$000E
-		rjmp	SPEED_MAX		; INT3 - max speed
-
 .org	$0056					; end of interrupt vectors
 
 ;***********************************************************
@@ -73,51 +64,56 @@ INIT:
 		ldi		mpr, 0xFF
 		out		PORTD, mpr		; enable pull-up resistors on Port D
 
-		; Configure External Interrupts
-		ldi		mpr, 0b1000_1010
-		sts		EICRA, mpr		; INT0, INT1, INT3 falling edge
-		ldi		mpr, 0b0000_1011
-		out		EIMSK, mpr		; enable INT0, INT1, INT3
-
 		; Configure 16-bit Timer/Counter 1A and 1B
 		clr		mpr
 		sts		TCNT1H, mpr
 		sts		TCNT1L, mpr
 
 		; Fast PWM, 8-bit mode, no prescaling
-		ldi		mpr, 0b10110001
+		ldi		mpr, 0b10100001
 		sts		TCCR1A, mpr
-		ldi		mpr, 0b00010001
+		ldi		mpr, 0b00001001
 		sts		TCCR1B, mpr
 
-		; Set initial speed to 0
-		clr		spd
-		sts		OCR1AL, zero
-		sts		OCR1BL, zero
+		; Set initial speed to max, display on Port B pins 3:0
+		ldi		spd, 15
+		ldi		mpr, 255
+		sts		OCR1AH, zero
+		sts		OCR1AL, mpr
+		sts		OCR1BH, zero
+		sts		OCR1BL, mpr
 
-		; Set TekBot to Move Forward on Port B
+		; Set TekBot to Move Forward and speed on Port B
 		ldi		mpr, (1<<EngDirR)|(1<<EngDirL)|(1<<EngEnR)|(1<<EngEnL)
+		ori		mpr, 0b00001111
 		out		PORTB, mpr
-
-		; NOTE: This must be the last thing to do in the INIT function
-		sei
 
 ;***********************************************************
 ;*	Main Program
 ;***********************************************************
 MAIN:
-		rjmp	MAIN			; loop forever, interrupts handle everything
+		; poll Port D pushbuttons
+		in		mpr, PIND
+		andi	mpr, 0b00001011
+
+		; if pressed, adjust speed
+		cpi		mpr, 0b00001010
+		breq	SPEED_DOWN
+
+		cpi		mpr, 0b00001001
+		breq	SPEED_UP
+
+		cpi		mpr, 0b00000011
+		breq	SPEED_MAX
+
+		rjmp	MAIN
 
 ;***********************************************************
 ;*	Functions and Subroutines
 ;***********************************************************
 
 SPEED_DOWN:
-		push	mpr
-		push	spd
-		in		mpr, SREG
-		push	mpr
-
+		; Check if already at speed 0
 		cpi		spd, 0
 		breq	SPEED_DOWN_DONE
 
@@ -133,25 +129,23 @@ SPEED_DOWN:
 
 		; Update Port B - preserve direction bits, update speed bits
 		in		mpr, PORTB
-		andi	mpr, 0b11110000		; clear lower nibble
-		or		mpr, spd			; OR in speed LEVEL (0-15), not OCR value
+		andi	mpr, 0b11110000	; clear lower nibble
+		or		mpr, spd		; OR in speed LEVEL (0-15)
 		out		PORTB, mpr
 
-SPEED_DOWN_DONE:
-		pop		mpr
-		out		SREG, mpr
-		pop		spd
-		pop		mpr
-		reti
+		; Wait for button release
+SPEED_DOWN_WAIT:
+		in		mpr, PIND
+		andi	mpr, 0b00001011
+		cpi		mpr, 0b00001011
+		brne	SPEED_DOWN_WAIT
 
-;-----------------------------------------------------------
+SPEED_DOWN_DONE:
+		rjmp	MAIN
+
 
 SPEED_UP:
-		push	mpr
-		push	spd
-		in		mpr, SREG
-		push	mpr
-
+		; Check if already at speed 15
 		cpi		spd, 15
 		breq	SPEED_UP_DONE
 
@@ -168,33 +162,28 @@ SPEED_UP:
 		; Update Port B - preserve direction bits, update speed bits
 		in		mpr, PORTB
 		andi	mpr, 0b11110000	; clear lower nibble
-		or		mpr, r0			; OR in new speed value
+		or		mpr, spd		; OR in speed LEVEL (0-15)
 		out		PORTB, mpr
 
-SPEED_UP_DONE:
-		pop		mpr
-		out		SREG, mpr
-		pop		spd
-		pop		mpr
-		reti
+		; Wait for button release
+SPEED_UP_WAIT:
+		in		mpr, PIND
+		andi	mpr, 0b00001011
+		cpi		mpr, 0b00001011
+		brne	SPEED_UP_WAIT
 
-;-----------------------------------------------------------
+SPEED_UP_DONE:
+		rjmp	MAIN
+
 
 SPEED_MAX:
-		push	mpr
-		push	spd
-		in		mpr, SREG
-		push	mpr
-
 		; Set speed to max
 		ldi		spd, 15
-
-		; 15 * 17 = 255
-		ldi		mpr, 17
-		mul		spd, mpr		; result in r0 = 255
-		clr		r1				; clear r1 after mul
-		sts		OCR1AL, r0
-		sts		OCR1BL, r0
+		ldi		mpr, 255
+		sts		OCR1AH, zero
+		sts		OCR1AL, mpr
+		sts		OCR1BH, zero
+		sts		OCR1BL, mpr
 
 		; Update Port B - preserve direction bits, update speed bits
 		in		mpr, PORTB
@@ -202,17 +191,22 @@ SPEED_MAX:
 		ori		mpr, 0b00001111	; set all speed bits (speed 15)
 		out		PORTB, mpr
 
+		; Wait for button release
+SPEED_MAX_WAIT:
+		in		mpr, PIND
+		andi	mpr, 0b00001011
+		cpi		mpr, 0b00001011
+		brne	SPEED_MAX_WAIT
+
 SPEED_MAX_DONE:
-		pop		mpr
-		out		SREG, mpr
-		pop		spd
-		pop		mpr
-		reti
+		rjmp	MAIN
 
 ;***********************************************************
 ;*	Stored Program Data
 ;***********************************************************
+		; Enter any stored data you might need here
 
 ;***********************************************************
 ;*	Additional Program Includes
 ;***********************************************************
+		; There are no additional file includes for this program
