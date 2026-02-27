@@ -2,8 +2,8 @@
 ;*
 ;*	This is the skeleton file for Lab 6 of ECE 375
 ;*
-;*	 Author: Enter your name
-;*	   Date: Enter Date
+;*	 Author: Graham Brown and Matt Wallin
+;*	   Date: 2/27/2026
 ;*
 ;***********************************************************
 
