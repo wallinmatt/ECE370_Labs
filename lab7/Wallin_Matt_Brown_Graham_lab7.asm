@@ -43,16 +43,46 @@
 ;***********************************************************
 INIT:
 	;Stack Pointer (VERY IMPORTANT!!!!)
+	ldi	mpr, low(RAMEND)
+	out	SPL, mpr
+	ldi	mpr, high(RAMEND)
+	out	SPH, mpr
 	;I/O Ports
+	ldi	mpr, 0xFF
+	out	DDRB, mpr
+	ldi	mpr, 0x00
+	out	PORTB, mpr
+
+	ldi	mpr, 0x00
+	out	DDRD, mpr
+	ldi	mpr, 0xFF
+	out	PORTD, mpr
 	;USART1
-		;Set baudrate at 2400bps
-		;Enable receiver and transmitter
-		;Set frame format: 8 data bits, 2 stop bits
+		
+	;Set baudrate at 2400bps
+	ldi	mpr, 0b0000_0000 ;Need to calculate bitrate
+	out	UBRR1H, mpr
+	ldi	mpr, 0b0000_0000
+	out	UBRR1L, mpr
+
+	;Enable receiver and transmitter
+	ldi	mpr, 0b0001_1000
+	out	UCSR1B, mpr
+
+	;Set frame format: 8 data bits, 2 stop bits
+	ldi	mpr, 0b0000_1110
+	out	UCSR1C, mpr
 
 	;TIMER/COUNTER1
 		;Set Normal mode
+	ldi	mpr, 0b1010_0000 
+	sts	TCCR1A, mpr
+	ldi	mpr, 0b0000_0001
+	sts	TCCR1B, mpr
 
 	;Other
+	rcall LCDInit
+	rcall LCDBacklightOn
 
 
 ;***********************************************************
