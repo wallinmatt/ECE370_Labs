@@ -129,13 +129,15 @@ FlushDone:
         rcall   CopyStringToSRAM
         rcall   LCDWrite
 
-        ; Poll PD7 (active low)
+        ; Poll PD7 (active low), wait for press then release
 WaitPD7:
         in      mpr, PIND
         sbrc    mpr, 7
         rjmp    WaitPD7
-
-        rcall   Debounce
+WaitPD7Release:
+        in      mpr, PIND
+        sbrs    mpr, 7
+        rjmp    WaitPD7Release
 
         ; Display "Ready. Waiting / for the opponent"
         rcall   LCDClrLn1
@@ -274,6 +276,15 @@ CRWaitInner:
 ExchangeGestures:
         push    mpr
 
+        ; Flush stale ready bytes left over from CheckReady
+EGFlush:
+        lds     mpr, UCSR1A
+        sbrs    mpr, RXC1
+        rjmp    EGFlushDone
+        lds     mpr, UDR1
+        rjmp    EGFlush
+EGFlushDone:
+
 WaitTX_Gest:
         lds     mpr, UCSR1A
         sbrs    mpr, UDRE1
@@ -350,8 +361,6 @@ CheckPD4:
         sbrc    mpr, 4
         rjmp    PD4PollLoop
 
-        rcall   Debounce
-
         inc     gesture
         cpi     gesture, 4
         brne    NoWrap
@@ -363,7 +372,6 @@ WaitPD4Release:
         in      mpr, PIND
         sbrs    mpr, 4
         rjmp    WaitPD4Release
-        rcall   Debounce
 
         rjmp    PD4PollLoop
 
@@ -533,28 +541,6 @@ SR_WriteLine1:
 
         rcall   DisplayCurrentGesture
 
-        pop     mpr
-        ret
-
-;***********************************************************
-;*  Debounce
-;***********************************************************
-Debounce:
-        push    mpr
-        push    ilcnt
-        push    olcnt
-
-        ldi     olcnt, 100
-DBOuter:
-        ldi     ilcnt, 200
-DBInner:
-        dec     ilcnt
-        brne    DBInner
-        dec     olcnt
-        brne    DBOuter
-
-        pop     olcnt
-        pop     ilcnt
         pop     mpr
         ret
 
