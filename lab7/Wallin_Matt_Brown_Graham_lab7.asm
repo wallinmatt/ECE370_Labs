@@ -59,12 +59,12 @@ INIT:
 	out	DDRD, mpr
 	ldi	mpr, 0xFF
 	out	PORTD, mpr
+
 	;USART1
-		
 	;Set baudrate at 2400bps
-	ldi	mpr, 0b0000_0000 ;Need to calculate bitrate
+	ldi	mpr, 0b0000_0001
 	out	UBRR1H, mpr
-	ldi	mpr, 0b0000_0000
+	ldi	mpr, 0b1010_0000
 	out	UBRR1L, mpr
 
 	;Enable receiver and transmitter
