@@ -97,6 +97,10 @@ MAIN:
 		rjmp	MAIN
 
 
+;***********************************************************
+;*	Functions and Subroutines
+;***********************************************************
+
 WaitSixSecs:
 		push	waitcnt			; Save wait register
 		push	ilcnt			; Save ilcnt register
@@ -116,11 +120,106 @@ ILoop:	dec		ilcnt			; decrement ilcnt
 		pop		waitcnt		; Restore wait register
 		ret				; Return from subroutine
 
+CheckReady:
+	push mpr
 
-;***********************************************************
-;*	Functions and Subroutines
-;***********************************************************
+ChooseInput:
+; TODO
 
+DisplayGestures:
+	push    mpr
+
+	rcall   LCDClr
+
+	; Opponent on line 1
+	cpi     oppGest, GestRock
+	breq    OppRock
+	cpi     oppGest, GestPaper
+	breq    OppPaper
+	cpi     oppGest, GestScissor
+	breq    OppScissor
+	rjmp    ShowSelf
+
+OppRock:
+	ldi     ZL, low(RockMsg<<1)
+	ldi     ZH, high(RockMsg<<1)
+	rjmp    WriteOpp
+OppPaper:
+	ldi     ZL, low(PaperMsg<<1)
+	ldi     ZH, high(PaperMsg<<1)
+	rjmp    WriteOpp
+OppScissor:
+	ldi     ZL, low(ScissorMsg<<1)
+	ldi     ZH, high(ScissorMsg<<1)
+
+WriteOpp:
+	ldi     mpr, 1
+	rcall   LCDWriteLine
+
+ShowSelf:
+	rcall   DisplayCurrentGesture
+
+	pop     mpr
+	ret
+
+ShowResult:
+	push    mpr
+
+	rcall   LCDClr
+
+	; Check draw
+	cp      gesture, oppGest
+	breq    IsDraw
+
+	; Rock=1, Paper=2, Scissors=3
+	; Win conditions: Rock beats Scissors (1 vs 3)
+	;                 Paper beats Rock    (2 vs 1)
+	;                 Scissors beats Paper(3 vs 2)
+	cpi     gesture, GestRock
+	brne    CheckPaperWin
+	cpi     oppGest, GestScissor
+	breq    IsWin
+	rjmp    IsLose
+
+CheckPaperWin:
+	cpi     gesture, GestPaper
+	brne    CheckScissorWin
+	cpi     oppGest, GestRock
+	breq    IsWin
+	rjmp    IsLose
+
+CheckScissorWin:
+	cpi     gesture, GestScissor
+	brne    IsLose
+	cpi     oppGest, GestPaper
+	breq    IsWin
+	rjmp    IsLose
+
+IsWin:
+	ldi     ZL, low(WinMsg<<1)
+	ldi     ZH, high(WinMsg<<1)
+	ldi     mpr, 1
+	rcall   LCDWriteLine
+	rjmp    ResultSelf
+
+IsDraw:
+	ldi     ZL, low(DrawMsg<<1)
+	ldi     ZH, high(DrawMsg<<1)
+	ldi     mpr, 1
+	rcall   LCDWriteLine
+	rjmp    ResultSelf
+
+IsLose:
+	ldi     ZL, low(LoseMsg<<1)
+	ldi     ZH, high(LoseMsg<<1)
+	ldi     mpr, 1
+	rcall   LCDWriteLine
+
+ResultSelf:
+	rcall   DisplayCurrentGesture
+
+	pop     mpr
+	ret
 ;***********************************************************
 ;*	Stored Program Data
 ;***********************************************************
@@ -129,9 +228,31 @@ ILoop:	dec		ilcnt			; decrement ilcnt
 ; An example of storing a string. Note the labels before and
 ; after the .DB directive; these can help to access the data
 ;-----------------------------------------------------------
-STRING_START:
-    .DB		"Welcome!"		; Declaring data in ProgMem
-STRING_END:
+;***********************************************************
+;*  Stored Program Data
+;***********************************************************
+WelcomeMsg1:
+	.DB     "Welcome!        "
+WelcomeMsg2:
+	.DB     "Please press PD7"
+ReadyMsg1:
+	.DB     "Ready. Waiting  "
+ReadyMsg2:
+	.DB     "for the opponent"
+GameStartMsg:
+	.DB     "Game start      "
+RockMsg:
+	.DB     "Rock            "
+PaperMsg:
+	.DB     "Paper           "
+ScissorMsg:
+	.DB     "Scissor         "
+WinMsg:
+	.DB     "You won!        "
+LoseMsg:
+	.DB     "You lost        "
+DrawMsg:
+	.DB     "Draw            "
 
 ;***********************************************************
 ;*	Additional Program Includes
