@@ -20,9 +20,11 @@
 ;*  Internal Register Definitions and Constants
 ;***********************************************************
 .def    mpr = r16               ; Multi-Purpose Register
+.def waitcnt = r17              ; Wait Counter
 
 ; Use this signal code between two boards for their game ready
 .equ    SendReady = 0b11111111
+.equ	WTime = 100				; Time to wait in wait loop
 
 ;***********************************************************
 ;*  Start of Code Segment
@@ -57,12 +59,12 @@ INIT:
 	out	DDRD, mpr
 	ldi	mpr, 0xFF
 	out	PORTD, mpr
+
 	;USART1
-		
 	;Set baudrate at 2400bps
-	ldi	mpr, 0b0000_0000 ;Need to calculate bitrate
+	ldi	mpr, 0b0000_0001
 	out	UBRR1H, mpr
-	ldi	mpr, 0b0000_0000
+	ldi	mpr, 0b1010_0000
 	out	UBRR1L, mpr
 
 	;Enable receiver and transmitter
@@ -93,6 +95,27 @@ MAIN:
 	;TODO: ???
 
 		rjmp	MAIN
+
+
+WaitSixSecs:
+		push	waitcnt			; Save wait register
+		push	ilcnt			; Save ilcnt register
+		push	olcnt			; Save olcnt register
+
+Loop:	ldi		olcnt, 224		; load olcnt register
+OLoop:	ldi		ilcnt, 237		; load ilcnt register
+ILoop:	dec		ilcnt			; decrement ilcnt
+		brne	ILoop			; Continue Inner Loop
+		dec		olcnt		; decrement olcnt
+		brne	OLoop			; Continue Outer Loop
+		dec		waitcnt		; Decrement wait
+		brne	Loop			; Continue Wait loop
+
+		pop		olcnt		; Restore olcnt register
+		pop		ilcnt		; Restore ilcnt register
+		pop		waitcnt		; Restore wait register
+		ret				; Return from subroutine
+
 
 ;***********************************************************
 ;*	Functions and Subroutines
